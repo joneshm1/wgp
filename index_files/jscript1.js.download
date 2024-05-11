@@ -1,0 +1,1353 @@
+//this function must be visible in global scope
+function googleTranslateElementInit() {
+    if (google) {
+
+        if ($("#google_translate_element1").length > 0)
+            new google.translate.TranslateElement({ pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE }, 'google_translate_element1');
+
+        if ($("#google_translate_element2").length > 0)
+            new google.translate.TranslateElement({ pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE }, 'google_translate_element2');
+
+        if ($("#google_translate_element3").length > 0)
+            new google.translate.TranslateElement({ pageLanguage: 'en', layout: google.translate.TranslateElement.InlineLayout.SIMPLE }, 'google_translate_element3');
+    }
+}
+
+$(document).ready(function () {
+    function hideInfo(obj) {
+        obj.next().slideUp('slow');
+
+        //obj.css({ 'background': '#ffffff url(/images/plus.gif) no-repeat center left' });
+        obj.addClass("hide").removeClass("show");
+    }
+
+    function showInfo(obj) {
+        obj.next().slideDown('slow');
+
+        //obj.css({ 'background': '#ffffff url(/images/minus.gif) no-repeat center left' });
+        obj.removeClass("hide").addClass("show");
+    }
+
+    function setToggle(obj, b) {
+        obj.off('click');
+
+        obj.on('click', function () {
+            var iteration = $(this).data('iteration') || (b ? 1 : 2);
+
+            switch (iteration) {
+                case 1:
+                    hideInfo(obj);
+
+                    break;
+                case 2:
+                    showInfo(obj);
+
+                    break;
+            }
+
+            iteration++;
+            if (iteration > 2) iteration = 1;
+            $(this).data('iteration', iteration);
+        });
+
+        obj.on("keydown", function (e) {
+            if (e.keyCode == 13) {
+                var iteration = $(this).data('iteration') || (b ? 1 : 2);
+
+                switch (iteration) {
+                    case 1:
+                        hideInfo(obj);
+
+                        break;
+                    case 2:
+                        showInfo(obj);
+
+                        break;
+                }
+
+                iteration++;
+                if (iteration > 2) iteration = 1;
+                $(this).data('iteration', iteration);
+            }
+        })
+    }
+
+    //add the userway script
+    $.get("/Userway.ashx")
+        .done(function (result) {
+            if (result != "") {
+                $("head").append($(result.data.widget.html));
+            }
+        });
+
+    setToggle($('.furtherInfoTitle'), true);
+    setToggle($('.surveyTitle'), true);
+    setToggle($('.yourHealthTitle'), true);
+
+    if (typeof _isResponsive === "undefined" || !_isResponsive) {
+
+        $("ul.subMenu").parent().on('mouseenter', function () { 
+            $(this).find("ul.subMenu").slideDown(300);
+        }).on('mouseleave', function () {
+            $(this).find("ul.subMenu").hide();
+        });
+
+        var navBarControlsWithSubMenus = $("ul.subMenu").parent();
+
+        for (var i = 0; i < navBarControlsWithSubMenus.length; i++) {
+            var control = navBarControlsWithSubMenus[i]
+            var children = $(control).children().children();
+            var lastChild = children[children.length - 1];
+
+            $(lastChild).on("focusout", function () {
+                $(this).parent().hide();
+            })
+        }
+    }//!_isResponsive
+    else {
+
+        /*
+         * Don't ask about the following code... *sigh*
+         * It is for showing/hiding submenus when tabbing to them for accessibility
+         * It pretty much goes through the menu items and if they have a sub menu
+         * shows the submenu (adds CSS classes) when the menu item is focused (tabbed to) 
+         * and when the last item of the sub menu has lost focus it closes the sub menu (removing CSS classes)
+        */
+        var navBarControls = $("ul.mainMenu").children()
+        for (var i = 0; i < navBarControls.length; i++) {
+            var control = navBarControls[i];
+
+            if (control.id == "menuItemOS")
+                continue;
+
+            //Show sub items when menu is tabbed to
+            $(control).on("focusin", function () {
+                var subMenu = $(this).find("ul.no-mobile");
+                //If menu control has sub menus
+                if (subMenu.length > 0) {
+
+                    //"Show" sub menu
+                    subMenu[0].classList.add("showSubMenu");
+                    var subMenuChildren = $(subMenu).children();
+
+                    for (var j = 0; j < subMenuChildren.length; j++) {
+                        subMenuChildren[j].classList.add("showSubMenuItems");
+                    }
+
+                    //When last child has lost focus "Hide" sub menu
+                    var lastChild = $(subMenu).children().last();
+                    $(lastChild).on("focusout", function () {
+                        var parent = $(this).parent()[0];
+                       parent.classList.remove("showSubMenu");
+
+                        var children = $(parent).children();
+                        for (var j = 0; j < children.length; j++) {
+                            children[j].classList.remove("showSubMenuItems");
+                        }
+                    })
+                }
+            })
+        }
+
+        /**
+         * Pretty much same as above but specifically for the "Have your say" menu
+         * but this menu has a sub-sub menu
+         * */
+        //Specific code for "Have your say" menu
+        var menuItemsWithSubMenus = [];
+        var haveYourSayMenu = $("#menuItemOS")[0];
+
+        //Get all sub menu items that have sub menus themselves
+        if (typeof haveYourSayMenu != "undefined") {
+
+            //Show menu when "Have your say" is focused (tabbed to)
+            $(haveYourSayMenu).on("focusin", function () {
+                this.classList.add("showSubMenu")
+
+                var menuList = $(this).find("ul");
+                menuList[0].classList.add("showSubMenu");
+
+                var menuItems = $(menuList).children("li");
+                for (var i = 0; i < menuItems.length; i++) {
+                    menuItems[i].classList.add("showSubMenuItems");
+                }
+
+                var lastChild = $(menuList).find("li#menuItemsub14")
+                /*
+                 * Annoyingly each menuItem counts as a focus for "menuItemOS"
+                 * so it adds a focusout event EVERY time any of the "Have your say"
+                 * menu items are tabbed to, so the unbind helps
+                 *                  *sigh*
+                 * */
+                lastChild.off("focusout");
+                //Hide on focusout of last child
+                lastChild.on("focusout", function () {
+                    var menu = $(this).parent()[0];
+                    var haveYourSayMenu = $(menu).parent()[0];
+
+                    menu.classList.remove("showSubMenu")
+                    haveYourSayMenu.classList.remove("showSubMenu")
+
+                    var menuItems = $(menu).children("li");
+                    for (var i = 0; i < menuItems.length; i++) {
+                        menuItems[i].classList.remove("showSubMenuItems");
+                    }
+                })
+            }) 
+
+            //Show sub sub menus
+            var menuItems = $(haveYourSayMenu).children("ul").children("li");
+            for (var i = 0; i < menuItems.length; i++) {
+                var item = menuItems[i];
+                var itemSubMenus = $(item).children("ul");
+
+                //If submenu has sub-sub menu
+                if (itemSubMenus.length > 0) {
+                    $(item).off("focusin");
+                    //Show on focusin (tabbed)
+                    $(item).on("focusin", function () {
+                        var subMenu = $(this).children("ul")[0];
+                        subMenu.classList.add("showSubMenu");
+
+                        var subMenuItems = $(subMenu).children("li");
+
+                        for (var i = 0; i < subMenuItems.length; i++) {
+                            subMenuItems[i].classList.add("showSubMenuItems");
+                        }
+
+                        var lastChild = subMenuItems.last();
+                        lastChild.off("focusout");
+                        lastChild.on("focusout", function () {
+                            var menu = $(this).parent()[0];
+                            var haveYourSayMenu = $(menu).parent()[0];
+
+                            menu.classList.remove("showSubMenu")
+                            haveYourSayMenu.classList.remove("showSubMenu")
+
+                            var menuItems = $(menu).children("li");
+                            for (var i = 0; i < menuItems.length; i++) {
+                                menuItems[i].classList.remove("showSubMenuItems");
+                            }
+                        })
+                    })
+                }
+            }
+        }
+    }
+
+    //if we have found a pagename javascript variable, add the value to the body
+    if (typeof _pageName !== "undefined") {
+        $("body").addClass(_pageName);
+    }
+
+    //setup the event handlers for the noticeboard controls if we are in the editor
+    if ($("body.editor").length > 0) {
+        //show/hide the noticeboard editor
+        $("#noticeboard-controls .control.show.show-hide").on("click", function () {
+            var $this = $(this);
+            var $wrapper = $("#noticeboard-wrapper");
+            var $controls = $("#noticeboard-controls");
+
+            if ($wrapper.hasClass("hide")) {
+                $wrapper.show().addClass("show").removeClass("hide");
+                $controls.find(".control.show-hide").val("Hide Noticeboard");
+                $controls.find(".control.save").show();
+                $controls.find(".control.cancel").show();
+            } else {
+                $wrapper.hide().addClass("hide").removeClass("show");
+                $controls.find(".control.show-hide").val("Show Noticeboard");
+                $controls.find(".control.save").hide();
+                $controls.find(".control.cancel").hide();
+            }
+        });
+    }
+
+    window.onbeforeprint = function () {
+        $('textarea').each(function () {
+            this.style.height = this.scrollHeight + 'px';
+        });
+    }
+});
+
+function doTinyMCE(fields, height) {
+
+    $(fields).each(function (index, value) {
+        var div = $("<div class=\"alert alert-warning alert-dismissable fade show\"></div>");
+        var button = $("<button class=\"close\" data-dismiss=\"alert\" aria-label=\"Close\">&times</button>");
+        var warning = $("<strong>Warning!</strong>");
+        var message = " I accept that I must have permission to use images (i.e. not download them from the internet) and I acknowlegde that any document being uploaded will be publicly accessible and so may appear on Google search.";
+
+        div.append(button, warning, message);
+        
+        $("#" + value).before(div);
+    });
+
+    $(".alert .close").on("click", function () {
+        $(this).closest("div.alert").remove();
+    });
+
+    tinymce.init({
+        mode: "exact",
+        theme: "modern",
+        language: "en_msw",
+        height: height || "480",
+        elements: fields,
+        browser_spellcheck: true,
+        valid_elements: '+*[*]',
+        content_css: "/css/tinymce.min.css",
+        convert_urls: false,
+        plugins: [
+            //"advlist autolink lists link image moxiemanager charmap preview anchor",
+            "autolink lists mswlink image moxiemanager charmap anchor",
+            "searchreplace visualblocks code hr",
+            "insertdatetime table contextmenu paste",
+            "textcolor colorpicker socialmedia mswmedia mswremoveword uploadfile",
+            "nhs_recommended_content"
+        ],
+        toolbar: "cut copy paste undo redo | styleselect | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | hr mswlink mswmedia uploadfile table | facebook twitter | insertfile mswremoveword code | nhsContent",
+        contextmenu: "cut copy paste | mswlink image inserttable | tableprops cell row column deletetable",
+        moxiemanager_path: "/images",
+        moxiemanager_no_host: true,
+        moxiemanager_view: "files",
+        moxiemanager_title: "File Manager",
+        moxiemanager_sort_by: "lastModified",
+        moxiemanager_sort_order: "desc",
+        moxiemanager_date_format: "%d/%m/&Y %H:%M:%S",
+        moxiemanager_leftpanel: false,
+        media_alt_source: false,
+        media_poster: false,
+        paste_retain_style_properties: "all",
+        textcolor_map: [
+            "000000", "Black",
+            "404040", "White",
+            "ED1C24", "Red",
+            "0D6829", "Green",
+            "0077AB", "Blue",
+            "3f48cc", "Dark Blue",
+            "a458c2", "Purple"
+        ],
+        relative_urls: true,
+        menubar: false,
+        convert_newlines_to_brs: true,
+        style_formats: [{
+            title: 'Heading 1', block: 'h1'
+        },
+
+        {
+            title: 'Heading 2', block: 'h2'
+        },
+
+        {
+            title: 'Heading 3', block: 'h3'
+        },
+
+        {
+            title: 'Heading 4', block: 'h4'
+        },
+
+        {
+            title: 'Heading 5', block: 'h5'
+        },
+
+        {
+            title: 'Normal', block: 'p'
+        }
+
+        //{
+        //    title: 'Image Left', selector: 'img',
+        //    styles: {
+        //        'float': 'left',
+        //        'margin': '0 10px 0 10px'
+        //    }
+        //},
+
+        //{
+        //    title: 'Image Right', selector: 'img',
+        //    styles: {
+        //        'float': 'right',
+        //        'margin': '0 0 10px 10px'
+        //    }
+
+        //}
+        /*
+        ,{
+            title: "Important", selector: "p",
+            styles: {
+                "color": "red",
+                "font-weight": "bold"
+            }
+        },
+        {
+            title: "Important", selector: "p",
+            styles: {
+                "color": "blue",
+                "font-weight": "bold"
+            }
+        },
+        {
+            title: "Highlight", selector: "p",
+            styles: {
+                "background-color": "yellow",
+                
+                "display": "inline-block"
+            }
+        },
+        {
+            title: "Highlight", selector: "p",
+            styles: {
+                "background-color": "#afa",
+                
+                "display": "inline-block"
+            }
+        }*/]
+    });
+}
+
+function doTinyMCEBasic(fields, height) {
+    //make sure the height is set to something (200 is the default)
+    height = height || 200;
+
+    tinymce.init({
+        mode: "exact",
+        theme: "modern",
+        height: height,
+        elements: fields,
+        //encoding: "xml",
+        plugins: [
+            "autolink link",
+            "paste  textcolor"
+        ],
+        toolbar: "cut copy paste undo redo forecolor",
+        //moxiemanager_path: "/images",
+        relative_urls: true,
+        menubar: false,
+        convert_newlines_to_brs: true
+        /*
+        style_formats: [{
+            title: 'Heading 1', block: 'h1'
+        },
+
+        {
+            title: 'Heading 2', block: 'h2'
+        },
+
+        {
+            title: 'Heading 3', block: 'h3'
+        },
+
+        {
+            title: 'Heading 4', block: 'h4'
+        },
+
+        {
+            title: 'Heading 5', block: 'h5'
+        },
+
+        {
+            title: 'Paragraph', block: 'p'
+        },
+
+        {
+            title: 'Image Left', selector: 'img',
+            styles: {
+                'float': 'left',
+                'margin': '0 10px 0 10px'
+            }
+        },
+
+        {
+            title: 'Image Right', selector: 'img',
+            styles: {
+                'float': 'right',
+                'margin': '0 0 10px 10px'
+            }
+
+        }],
+        moxiemanager_title: "Documents & Images"
+        */
+    });
+
+}
+
+var isIE6 = false;
+var isIE = (navigator.appVersion.indexOf("MSIE") != -1) ? true : false;
+if (isIE) isIE6 = (navigator.appVersion.indexOf("MSIE 6") != -1) ? true : false;
+var isWin = (navigator.appVersion.toLowerCase().indexOf("win") != -1) ? true : false;
+var isOpera = (navigator.userAgent.indexOf("Opera") != -1) ? true : false; eraseSaveCookie();
+
+window.document.onclick = function () {
+    doHideSubMenu();
+    createSaveCookie();
+};
+
+function myShowDialog(href, title, height, width, reload) {
+    if (isIE6) height += 40;
+    if (window.showModalDialog) {
+        var size = "dialogHeight:" + height + "px;dialogWidth:" + width + "px;center:yes;resizeable:no;help:no;status:no;";
+        if (window.showModalDialog(href, window, size)) {
+            if (reload == 1)
+                document.location.href = document.location.href;
+            else if (reload == 2)
+                document.forms[0].submit();
+
+        }
+
+    }
+
+    else {
+        size = "height=" + height + "px,width=" + width + "px,status=no,toolbar=no,menubar=no,help=no,location=no;modal=yes;";
+        window.open(href, title, size);
+
+    }
+
+}
+/* function cookieAccepted() { var ca = document.cookie.split(';');
+ for (var i = 0; i < ca.length; i++) { var c = ca[i]; while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+ if (c.indexOf("cookieAccepted=") == 0) { if (c.substring(15, c.length) == "1") return true; } 
+return false; } 
+} 
+*/function openTips(file) {
+    if (file != "") {
+        var helpfile = "/help/" + file + "help.htm"; open(helpfile, "_new", "height=500,width=650,location=0,menubar=0,status=0,toolbar=0,scrollbars=1");
+    }
+    else open("https://mysurgery.zendesk.com/hc/en-us", "_new", "height=500,width=650,location=0,menubar=0,status=0,toolbar=0");
+}
+function setFocus() {
+    var elem = document.getElementById("userid");
+    if (elem != null) elem.focus();
+}
+function editOptions() {
+    myShowDialog("options.aspx", "Options & Styles", 640, 1010, 1);
+}
+function editAppointmentOptions(p) {
+    myShowDialog("/appointmentoptions.aspx?p=" + p, "Appointment Options", 520, 580, 1);
+}
+function openForPrinting() {
+    var href = document.location.href; if (href.indexOf("?") > 0) href += "&print=1"; else href += "?print=1"; window.open(href, "_blank");
+}
+function checkForSave() {
+    if (readSaveCookie() > 10) {
+        var ret = confirm("Discard your changes?");
+        if (ret) eraseSaveCookie();
+        return ret;
+    }
+    else return true;
+}
+var nSaveCount = 0;
+function createSaveCookie() {
+    var enc = document.URL;
+    if (enc.indexOf('_form') > 0) {
+        nSaveCount++;
+        var date = new Date();
+        date.setTime(date.getTime() + 1800000);
+
+        document.cookie = "msw_save=" + nSaveCount + ";expires=" + date.toGMTString() + ";path=/";
+    }
+
+}
+
+function readSaveCookie() {
+    var ca = document.cookie.split(';');
+
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ')
+            c = c.substring(1, c.length);
+
+        if (c.indexOf("msw_save=") == 0)
+            return c.substring(9, c.length);
+
+    }
+
+    return 0;
+}
+
+function eraseSaveCookie() {
+    var date = new Date();
+    date.setTime(date.getTime() - 1800000);
+
+    document.cookie = "msw_save=0;expires=" + date.toGMTString() + ";path=/"; nSaveCount = 0;
+}
+
+function autoRefresh(href, nTime) {
+    setTimeout('document.location.href=("' + href + '")', nTime);
+}
+
+function openRepeat(id, p) {
+    myShowDialog("repeat.aspx?p=" + p + "&pid=" + id, "Repeat Request", 600, 600, 1);
+}
+
+function openRepeat1(id, p) {
+    myShowDialog("repeat1.aspx?p=" + p + "&pid=" + id, "Repeat Request", 600, 600, 0);
+}
+
+function openTest(id, p) {
+    myShowDialog("ptest.aspx?tid=" + id, "Test Result", 540, 600, 0);
+    document.forms[0].submit();
+}
+
+function openAppointment(id, p) {
+    myShowDialog("appointment.aspx?p=" + p + "&pid=" + id, "Appointment", 540, 600, 1);
+}
+
+function openBmi(w, h) {
+    myShowDialog("bmi.aspx?w=" + w + "&h=" + h, "Body Mass Index", 580, 570, 1);
+}
+
+function openUsageStats() {
+    myShowDialog("usage.aspx", "Usage Statistics", 540, 370, 0);
+}
+
+function addToFavourites(thepage, thetitle) {
+    if (window.external) window.external.Addfavorite(thepage, thetitle);
+    else alert("You are using a browser that does not support adding to Favourites by script. Please add this page manually");
+}
+
+function deleteInfoContent() {
+    tinyMCE.get('ctl00_ContentPlaceHolder1_field1').setContent('');
+    document.getElementById("ctl00_ContentPlaceHolder1_title1").value = "";
+    document.getElementById("ctl00_ContentPlaceHolder1_field2").value = "";
+    alert("Press Save to complete the deletion of this page");
+
+}
+
+function prescriptionHelp() {
+    myShowDialog("/help/prescriptions_help.htm", "Prescriptions Help", 500, 500, 0);
+}
+function prescriptionHelpLogon() {
+    myShowDialog("/help/prescriptions_help_logon.htm", "Prescriptions Help", 300, 500, 0);
+}
+function prescriptionHelpLogon1() {
+    myShowDialog("/help/prescriptions_help_logon1.htm", "Prescriptions Help", 600, 500, 0);
+}
+function appointmentsHelp() {
+    myShowDialog("/help/appointments_help.htm", "Appointments Help", 290, 400, 0);
+}
+function disable(field1) {
+    var elem = document.getElementById(field1);
+    if (elem != null) elem.disabled = true;
+}
+function enable(field1) {
+    var elem = document.getElementById(field1);
+    if (elem != null) elem.disabled = false;
+}
+
+function checkLength(len, input, output, def, e) {
+    var v = $("#" + output);
+    var x = 0;
+    if (input)
+        x = input.value.length - len;
+    else {
+        if (window.clipboardData) x = window.clipboardData.getData("Text").length - len;
+        else {
+            try {
+                if (window.netscape && netscape.security) {
+                    netscape.security.PrivilegeManager.enablePrivilege("UniversalXPConnect");
+
+                }
+                x = document.execCommand("paste", false, null).length - len;
+            }
+            catch (e) {
+                success = false;
+            }
+
+        }
+
+    }
+    if (x > 0) {
+        if (!e) e = window.event;
+        var code = e.charCode || e.keyCode;
+        if (e.ctrlKey || e.altKey || ((code < 47) && (code != 32))) {
+            v.html('').append("We only allow a maximum of " + len + " characters in this form and you have typed " + x + " more than that. If you continue, your text will be truncated.");
+
+            return true;
+        }
+        else {
+            v.html('').append("We only allow a maximum of " + len + " characters in this form.");
+
+            return false;
+        }
+
+        //v.html('').append("We only allow a maximum of " + len + " characters in this form and you have typed " + x + " more than that. If you continue, your text will be truncated.");
+        return false; /*event is null, we are not looking to stop the action*/
+    }
+    else {
+        v.html('').append(def);
+        return true;
+    }
+
+}
+
+function uploadCV() {
+    myShowDialog("/fileman.aspx?cv=1", "Upload CV", 340, 580, 2);
+    //submit after modal
+}
+
+function uploadNewsletter() {
+    myShowDialog("/fileman.aspx?nl=1", "Upload Newsletter", 340, 580, 0);
+
+}
+function uploadSurveyReport() {
+    myShowDialog("/fileman.aspx?sr=1", "Upload Survey Report", 340, 580, 0);
+
+}
+
+function addLink(fieldId) {
+    if (window.showModalDialog) {
+        var href = "fileman.aspx?di=1"; var size = "dialogHeight:440px;dialogWidth:580px;center:yes;resizeable:no;help:no;status:no"; var ret = window.showModalDialog(href, window, size);
+
+        if (typeof (ret) != 'undefined' && ret != "") {
+            var arrOut = ret.split("|");
+            /*nhval + '|' + nfval + '|' + na + "|" + pwVal;*/
+            if (arrOut.length > 0) {
+                var link = arrOut[0];
+                if (arrOut.length > 1) {
+                    var title = arrOut[1];
+                    if (arrOut.length > 2) {
+                        var align = arrOut[2];
+                        if (arrOut.length > 3) {
+                            var wdth = arrOut[3];
+                        }
+                    }
+                }
+            }
+
+            if (link) {
+                var ftb = document.getElementById(fieldId);
+
+                if (ftb != null) {
+                    var styleAlign = "";
+                    if (align == "middle")
+                        styleAlign = "vertical-align: middle";
+                    else
+                        styleAlign = "float: " + align;
+                    if (link.length > 4 && ((link.substring(link.length - 4).toLowerCase() == ".jpg") || (link.substring(link.length - 4).toLowerCase() == ".gif") || (link.substring(link.length - 4).toLowerCase() == ".png"))) {
+                        if (wdth)
+                            wdth = "width: " + wdth + ";";
+                        else
+                            width = "";
+
+                        //FTB_API[ftb.id].InsertHtml("<img style=\"" + styleAlign + "; " + wdth + "\" src=\"" + link + "\" alt=\"" + title + "\" />");
+                        //$(ftb).prepend("<img style=\"" + styleAlign + "; " + wdth + "\" src=\"" + link + "\" alt=\"" + title + "\" />");
+                        var old = tinyMCE.activeEditor.getContent();
+                        tinyMCE.activeEditor.setContent("<img style=\"" + styleAlign + "; " + wdth + "\" src=\"" + link + "\" alt=\"" + title + "\" />" + old);
+                    } else {
+                        //FTB_API[ftb.id].InsertHtml("<a style=\"" + styleAlign + ";\" target=\"_blank\" href=\"" + link + "\" title=\"" + title + "\">" + title + "</a>");
+                        //$(ftb).prepend("<a style=\"" + styleAlign + ";\" target=\"_blank\" href=\"" + link + "\" title=\"" + title + "\">" + title + "</a>");
+                        var old = tinyMCE.activeEditor.getContent();
+                        tinyMCE.activeEditor.setContent("<a style=\"" + styleAlign + ";\" target=\"_blank\" href=\"" + link + "\" title=\"" + title + "\">" + title + "</a>" + old);
+                    }
+                }
+
+            }
+
+        }
+
+    }
+
+    else
+        alert("Your browser does not support this functionality - use the latest version of Internet Explorer");
+
+}
+
+function addFacebookLink(fieldId) {
+    var url = prompt('Enter your Facebook URL:', 'http://www.facebook.com');
+    if (url != null) {
+        var ftb = document.getElementById(fieldId);
+        if (ftb != null) {
+            FTB_API[ftb.id].InsertHtml("<p><a style=\"font-weight: bold;\" target=\"_blank\" href=\"" + url + "\" title=\"Facebook\"><img style=\"vertical-align: middle; border: none; width: 32px; height: 32px;\" src=\"/live/images/facebook.gif\" alt=\"Facebook\" />&nbsp;Visit us on Facebook</a></p>");
+        }
+    }
+
+}
+function addTwitterLink(fieldId) {
+    var url = prompt('Enter your Twitter URL:', 'http://www.twitter.com');
+    if (url != null) {
+        var ftb = document.getElementById(fieldId);
+        if (ftb != null) {
+            FTB_API[ftb.id].InsertHtml("<p><a style=\"font-weight: bold;\" target=\"_blank\" href=\"" + url + "\" title=\"Twitter\"><img style=\"vertical-align: middle; border: none; width: 32px; height: 32px;\" src=\"/live/images/twitter.gif\" alt=\"Twitter\" />&nbsp;Follow us on Twitter</a></p>");
+        }
+    }
+}
+function EmptyFTB(fieldId) {
+    var ftb = document.getElementById(fieldId);
+    if (ftb != null) { ftb.value = ""; FTB_API[ftb.id].value = ""; }
+}
+function openActivationPage(id) {
+    myShowDialog("activate.aspx?p=" + id, "Activate Id", 240, 600, 0);
+}
+var newsspeed = 400; var newspause = 10000; var newslist = ''; function FeedScrollStart(id) {
+    newslist = 'ul#listnews' + id; interval = setInterval(removeFirst, newspause);
+}
+function removeFirst() {
+    var newsfirst = $(newslist + ' li:first').html();
+    $(newslist + ' li:first').animate({ opacity: 0 },
+    newsspeed).fadeOut('slow', function () {
+        $(this).remove();
+    });
+    addLast(newsfirst);
+}
+function addLast(first) {
+    var last = '<li class="small" style="display:none">' + first + '</li>'; $(newslist).append(last);
+    $(newslist + ' li:last').animate({ opacity: 1 },
+    newsspeed).fadeIn('slow');
+}
+var maxh = 0; var pause = 0; var stop = 0; var dataobj; var nTimeId = 0; function NewsScrollStart(current) {
+    clearTimeout(nTimeId);
+    dataobj = document.getElementById("newfeed" + current);
+    if (dataobj == null) dataobj = document.getElementById("newfeed0");
+    if (dataobj != null) {
+        maxh = dataobj.scrollHeight; maxh = dataobj.scrollHeight; maxh -= dataobj.offsetHeight; dataobj.style.visibility = "visible"; if (maxh > 0) NewsScrollGo();
+    }
+}
+function PrescriptionScrollStart() {
+    clearTimeout(nTimeId);
+    dataobj = document.getElementById("prescriptionsAnnouncementsItem");
+    if (dataobj != null) {
+        maxh = dataobj.scrollHeight; maxh = dataobj.scrollHeight; maxh -= dataobj.offsetHeight; if (maxh > 0) NewsScrollGo();
+    }
+}
+function NewsScrollGo() {
+    dataobj.scrollTop = 0; nTimeId = setTimeout("NewsScrollNewsDiv()", 1000);
+}
+function NewsScrollReset() {
+    if (stop == 0 && pause == 0) {
+        dataobj.scrollTop = dataobj.scrollTop - 10; if (dataobj.scrollTop > 0) nTimeId = setTimeout("NewsScrollReset()", 10);
+        else nTimeId = setTimeout("NewsScrollNewsDiv()", 1000);
+    }
+    else nTimeId = setTimeout("NewsScrollReset()", 1000);
+}
+function NewsScrollNewsDiv() {
+    if (stop == 0 && pause == 0) {
+        dataobj.scrollTop = dataobj.scrollTop + 1; if (dataobj.scrollTop >= maxh) nTimeId = setTimeout("NewsScrollReset()", 2000);
+        else nTimeId = setTimeout("NewsScrollNewsDiv()", 50);
+    }
+    else nTimeId = setTimeout("NewsScrollNewsDiv()", 1000);
+}
+function shownewfeed() {
+    var el = document.getElementById("newfeedslist");
+    if (el != null) {
+        var v = el.value; var current = "0"; var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i]; while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if ((c.indexOf("newfeed=") == 0) && (c.length > 8)) current = c.substring(8, c.length);
+        }
+        var date = new Date();
+        date.setTime(date.getTime() + 31536000000);
+        document.cookie = "newfeed=" + v + ";expires=" + date.toGMTString() + ";path=/"; var a = document.getElementById("newfeed" + current);
+        if (a != null) { a.style.visibility = "hidden"; }
+        a = document.getElementById("newfeed" + v);
+        if (a != null) {
+            a.style.visibility = "visible"; a.setAttribute("top", "-200px");
+            NewsScrollStart(v);
+        }
+    }
+}
+function clearText(tb) { if (tb) tb.value = ""; }
+function resetText(tb, dt) { if (tb && tb.value == "") tb.value = dt; }
+function closeWindow() {
+    if (!isIE) alert("Your browser is preventing this window from being closed.\r\nPlease close it using the menu in the normal way.");
+    else window.close();
+}
+function openComment(pvar) {
+    myShowDialog("https://www.mysurgerywebsite.co.uk/secure/contact_dlg.aspx?p=" + pvar, "Comments", 570, 570, 0);
+}
+function setFontSize() {
+    var n = readFontCookie();
+    if (n > 0) {
+        var bo = document.getElementsByTagName("body");
+        if (bo && bo.length > 0) bo[0].style.fontSize = n.toString() + "%";
+    }
+}
+function toggleFontSize(b) {
+    var bo = document.getElementsByTagName("body");
+    if (bo && bo.length > 0) {
+        var s = bo[0].style.fontSize.replace("%", "");
+        var n = 0; if (s.length == 0) s = "80"; try {
+            n = parseInt(s);
+        }
+        catch (ex) { n = 0; }
+        if (b > 0) n += 5; else n -= 5; s = n.toString();
+        bo[0].style.fontSize = s + "%"; createFontCookie(s);
+    }
+}
+function createFontCookie(s) {
+    var date = new Date();
+    date.setTime(date.getTime() + 31536000000);
+    document.cookie = "msw_font=" + s + ";expires=" + date.toGMTString() + ";path=/";
+}
+function readFontCookie() {
+    var n = 0; try {
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i]; while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+            if (c.indexOf("msw_font=") == 0) n = parseInt(c.substring(9, c.length));
+        }
+        return n;
+    }
+    catch (ex) { return 0; }
+}
+function eraseFontCookie() {
+    var date = new Date();
+    date.setTime(date.getTime() - 31536000000);
+    document.cookie = "msw_font=0;expires=" + date.toGMTString() + ";path=/";
+}
+function checkFlashVersion() {
+    if (!DetectFlashVer(9, 0, 124)) {
+        alert('This content requires the Adobe Flash Player version 9 or later.\r\n' + 'To download Flash visit www.adobe.com/go/getflash');
+    }
+}
+function ControlVersion() {
+    var version; var axo; var e; try {
+        axo = new ActiveXObject("ShockwaveFlash.ShockwaveFlash.7");
+        version = axo.GetVariable("$version");
+    }
+    catch (e) { }
+    if (!version) {
+        try {
+            axo = new ActiveXObject("ShockwaveFlash.ShockwaveFlash.6");
+            version = "WIN 6,0,21,0"; axo.AllowScriptAccess = "always"; version = axo.GetVariable("$version");
+        }
+        catch (e) { }
+    }
+    if (!version) {
+        try {
+            axo = new ActiveXObject("ShockwaveFlash.ShockwaveFlash.3");
+            version = axo.GetVariable("$version");
+        }
+        catch (e) { }
+    }
+    if (!version) {
+        try {
+            axo = new ActiveXObject("ShockwaveFlash.ShockwaveFlash.3");
+            version = "WIN 3,0,18,0";
+        }
+        catch (e) { }
+    }
+    if (!version) {
+        try {
+            axo = new ActiveXObject("ShockwaveFlash.ShockwaveFlash");
+            version = "WIN 2,0,0,11";
+        }
+        catch (e) { version = -1; }
+    }
+    return version;
+}
+function GetSwfVer() {
+    var flashVer = -1; if (navigator.plugins != null && navigator.plugins.length > 0) {
+        if (navigator.plugins["Shockwave Flash 2.0"] || navigator.plugins["Shockwave Flash"]) {
+            var swVer2 = navigator.plugins["Shockwave Flash 2.0"] ? " 2.0" : ""; var flashDescription = navigator.plugins["Shockwave Flash" + swVer2].description; var descArray = flashDescription.split(" ");
+            var tempArrayMajor = descArray[2].split(".");
+            var versionMajor = tempArrayMajor[0]; var versionMinor = tempArrayMajor[1]; var versionRevision = descArray[3]; if (versionRevision == "") versionRevision = descArray[4]; if (versionRevision[0] == "d") versionRevision = versionRevision.substring(1);
+            else if (versionRevision[0] == "r") {
+                versionRevision = versionRevision.substring(1);
+                if (versionRevision.indexOf("d") > 0) {
+                    versionRevision = versionRevision.substring(0, versionRevision.indexOf("d"));
+                }
+            }
+            else if (versionRevision[0] == "b") {
+                versionRevision = versionRevision.substring(1);
+            }
+            flashVer = versionMajor + "." + versionMinor + "." + versionRevision;
+        }
+    }
+    else if (navigator.userAgent.toLowerCase().indexOf("webtv/2.6") != -1) flashVer = 4; else if (navigator.userAgent.toLowerCase().indexOf("webtv/2.5") != -1) flashVer = 3; else if (navigator.userAgent.toLowerCase().indexOf("webtv") != -1) flashVer = 2; else if (isIE && isWin && !isOpera) flashVer = ControlVersion();
+    return flashVer;
+}
+function DetectFlashVer(reqMajorVer, reqMinorVer, reqRevision) {
+    versionStr = GetSwfVer();
+    if (versionStr == -1) return false; else if (versionStr != 0) {
+        if (isIE && isWin && !isOpera) {
+            tempArray = versionStr.split(" ");
+            tempString = tempArray[1]; versionArray = tempString.split(",");
+        }
+        else versionArray = versionStr.split(".");
+        var versionMajor = versionArray[0]; var versionMinor = versionArray[1]; var versionRevision = versionArray[2]; if (versionMajor > parseFloat(reqMajorVer)) return true; else if (versionMajor == parseFloat(reqMajorVer)) {
+            if (versionMinor > parseFloat(reqMinorVer)) return true; else if (versionMinor == parseFloat(reqMinorVer)) { if (versionRevision >= parseFloat(reqRevision)) return true; }
+        }
+        return false;
+    }
+}
+
+function toggleTranslate() {
+    var v = $(".google_translate_element");
+
+    if (v.css("visibility") == "visible") {
+        v.css("visibility", "hidden");
+    } else {
+        v.css("visibility", "visible");
+    }
+}
+
+function openAlcoholCalc() {
+    myShowDialog("/alcohol.aspx", "Alcohol Units Calculator", 400, 650, 0);
+}
+var subMenu_elem = null;
+
+function hideSubMenu(e) {
+    try {
+        if (!e) e = window.event; var tg = (window.event) ? e.srcElement : e.target; if ((tg.nodeName != 'UL') && (tg.nodeName != 'LI') && ((tg.nodeName != 'DIV'))) return; var reltg = (e.relatedTarget ? e.relatedTarget : e.toElement);
+        while (reltg != tg && reltg.nodeName && reltg.nodeName != 'FORM') reltg = reltg.parentNode; if (reltg == tg) return; doHideSubMenu();
+    }
+    catch (e) { }
+}
+function doHideSubMenu() {
+
+    if (subMenu_elem && (subMenu_elem.style.visibility != "hidden")) {
+        subMenu_elem.style.visibility = "hidden"; if (isIE6) {
+            var n = document.getElementById("newfeedslist");
+            if (n) n.style.visibility = "visible";
+        }
+    }
+
+}
+function showSubMenu(s, e) {
+    if (s != '') {
+        if (!e) e = window.event; var a = (window.event) ? e.srcElement : e.target; var p = a.parentNode; if (a.nodeName != 'A' && p.nodeName != 'LI') return; var gp = p.parentNode; if ((subMenu_elem) && (subMenu_elem.id != s) && (subMenu_elem.style.visibility != "hidden")) subMenu_elem.style.visibility = "hidden"; subMenu_elem = document.getElementById(s);
+        if (subMenu_elem) {
+            if (subMenu_elem.style.visibility != "visible") {
+                var location = Sys.UI.DomElement.getLocation(p);
+                var newy = location.y; var newx = 0; if ((getStyle(gp.parentNode, "position") == "absolute")) { newx = p.offsetWidth - 10; newy -= Sys.UI.DomElement.getLocation(gp).y; }
+                else if (getStyle(document.getElementById("container"),
+                 "position") == "relative") { newx = p.offsetWidth - 10; }
+                else if (getStyle(document.getElementById("fullMenu"),
+                 "position") == "relative") { newx = p.offsetLeft; }
+                else { newy = location.y; if (gp.offsetWidth < 300) newx = location.x + p.offsetWidth - 10; else newx = location.x; }
+                subMenu_elem.style.top = newy + 'px'; subMenu_elem.style.left = newx + 'px'; if (isIE6) {
+                    var n = document.getElementById("newfeedslist");
+                    if (n) {
+                        var l = Sys.UI.DomElement.getLocation(n);
+                        var r = newx + subMenu_elem.offsetWidth; var b = newy + subMenu_elem.offsetHeight; if ((r >= l.x) && (newx <= (l.x + n.offsetWidth)) && (b >= l.y) && (newy <= (l.y + n.offsetHeight))) n.style.visibility = "hidden";
+                    }
+                }
+                subMenu_elem.style.visibility = "visible";
+            }
+        }
+    }
+}
+function getStyle(el, styleProp) {
+    if (el.currentStyle) var y = el.currentStyle[styleProp]; else if (window.getComputedStyle) y = document.defaultView.getComputedStyle(el, null).getPropertyValue(styleProp);
+    return y;
+}
+
+function printRequests() {
+    var cbId = 1; var cb = document.getElementById("ucheck" + cbId);
+    var idOut = ""; while (cb != null) {
+        if (cb.checked) idOut = idOut + "~" + cb.value; cbId++; cb = document.getElementById("ucheck" + cbId);
+    }
+    cbId = 1; cb = document.getElementById("pcheck" + cbId);
+    while (cb != null) {
+        if (cb.checked) idOut = idOut + "~" + cb.value; cbId++; cb = document.getElementById("pcheck" + cbId);
+    }
+    if (idOut != "") window.open("repeatsprint.aspx?docs=" + idOut);
+    else alert("First select the repeat requests that you wish to print.");
+
+}
+function approveRequests() {
+    var cbId = 1; var cb = document.getElementById("ucheck" + cbId);
+    var idOut = ""; while (cb != null) {
+        if (cb.checked) idOut = idOut + "~" + cb.value; cbId++; cb = document.getElementById("ucheck" + cbId);
+    }
+    if (idOut != "") {
+        document.forms[0].__EVENTARGUMENT.value = idOut; document.forms[0].submit();
+    }
+    else alert("First select the unprocessed requests that you wish to approve.");
+}
+var uToggle = false; var pToggle = false; function checkAll(b) {
+    var bCheck = true; if (b == 'u') { if (uToggle) bCheck = false; uToggle = !uToggle; }
+    else { if (pToggle) bCheck = false; pToggle = !pToggle; }
+    var cbId = 1; var cb = document.getElementById(b + "check" + cbId);
+    while (cb != null) {
+        cb.checked = bCheck; cbId++; cb = document.getElementById(b + "check" + cbId);
+    }
+}
+function showPage(n, m) {
+    for (i = 1; i <= m; i++) {
+        var el = document.getElementById("page" + i);
+        if (el != null) { if (i == n) el.style.visibility = "visible"; else el.style.visibility = "hidden"; }
+        el = document.getElementById("buttonPage" + i);
+        if (el != null) { if (i == n) el.style.visibility = "visible"; else el.style.visibility = "hidden"; }
+    }
+}
+function loadHealthInfo(f, p) {
+    var el = document.getElementById('__EVENTARGUMENT');
+    if (el != null) {
+        el.value = f + '&' + p; document.forms[0].submit();
+    }
+}
+function setActiveTab(n) {
+    var ctrl = $find('ctl00_ContentPlaceHolder1_TabContainer1');
+    if (ctrl) ctrl.set_activeTabIndex(n);
+    return false;
+}
+function resizeFacebook() {
+    var fb = document.getElementById("fbBox");
+    if (fb) {
+        var p = document.getElementById("thefeeds2");
+        if (p) {
+            var w = p.offsetWidth - 10; var h = p.offsetHeight - 40; fb.setAttribute('width', w + "");
+            fb.setAttribute('height', h + "");
+        }
+    }
+}
+function px_checkAll(nMax, cont, cb) {
+    for (v = 1; v <= nMax; ++v) {
+        var c = document.getElementById(cont + '' + v);
+        if (c) c.checked = cb.checked;
+    }
+}
+function showTextReminders() {
+    myShowDialog("/secure/text-reminders.aspx", "Text Message Reminders", 550, 680, 1);
+}
+function showMSWNews() {
+    myShowDialog("/mswnews.aspx", "My Surgery Website Help", 550, 680, 1);
+}
+function moveRight(c, n) {
+    moveTab(c, n, true);
+}
+function moveLeft(c, n) {
+    moveTab(c, n, false);
+}
+function moveTab(c, n, b) {
+    var tabContainer = $find(c);
+    var from = $get(c + "_TabPanel" + n.toString() + "_field" + n.toString());
+    var from1 = $get(c + "_TabPanel" + n.toString() + "_title" + n.toString());
+    var from2 = $get(c + "_TabPanel" + n.toString() + "_panelHeader" + n.toString());
+    if (b) n++; else n--; var to = $get(c + "_TabPanel" + n.toString() + "_field" + n.toString());
+    var to1 = $get(c + "_TabPanel" + n.toString() + "_title" + n.toString());
+    var to2 = $get(c + "_TabPanel" + n.toString() + "_panelHeader" + n.toString());
+    if (from && from1 && to && to1 && from2 && to2) {
+        var temp = tinyMCE.editors[from.id].getContent();
+        var temp1 = from1.value;
+        var temp2 = from2.innerHTML;
+
+        tinyMCE.editors[from.id].setContent(tinyMCE.editors[to.id].getContent());
+
+        from1.value = to1.value;
+        from2.innerHTML = to2.innerHTML;
+
+        to1.value = temp1;
+        to2.innerHTML = temp2;
+
+        tinyMCE.editors[to.id].setContent(temp);
+
+        if (tabContainer) tabContainer.set_activeTab(tabContainer.get_tabs()[n - 1]);
+    }
+}
+function moveTab_old(c, n, b) {
+    var from = document.getElementById(c + "_TabPanel" + n.toString() + "_field" + n.toString());
+    var from1 = document.getElementById(c + "_TabPanel" + n.toString() + "_title" + n.toString());
+    var from2 = document.getElementById(c + "_TabPanel" + n.toString() + "_panelHeader" + n.toString());
+    if (b) n++; else n--; var to = document.getElementById(c + "_TabPanel" + n.toString() + "_field" + n.toString());
+    var to1 = document.getElementById(c + "_TabPanel" + n.toString() + "_title" + n.toString());
+    var to2 = document.getElementById(c + "_TabPanel" + n.toString() + "_panelHeader" + n.toString());
+    if (from && from1 && to && to1 && from2 && to2) {
+        if ((to1.value != "") || (FTB_API[to.id].GetHtml() != "")) {
+            moveTab(c, n, b);
+        }
+        if ((to1.value == "") && (FTB_API[to.id].GetHtml() == "")) {
+            to1.value = from1.value; from1.value = ""; FTB_API[to.id].SetHtml(FTB_API[from.id].GetHtml());
+            FTB_API[from.id].SetHtml("");
+            to2.innerHTML = from2.innerHTML; from2.innerHTML = "";
+        }
+    }
+}
+function showSurveyGraph(question, answers, values) {
+    var date = new Date();
+    date.setTime(date.getTime() + 31536000000);
+    document.cookie = "surveyA=" + answers + ";expires=" + date.toGMTString() + ";path=/"; document.cookie = "surveyV=" + values + ";expires=" + date.toGMTString() + ";path=/"; myShowDialog("showGraph.aspx?q=" + question, "Survey Results", 500, 520, false);
+}
+function setPassword(e, p) {
+    var href = "setPassword.aspx?e=" + e + "&p=" + p; if (window.showModalDialog) {
+        size = "dialogHeight:320px;dialogWidth:520px;center:yes; scroll:yes;resizeable:yes;status:no;"; window.showModalDialog(href, window, size);
+    }
+}
+
+function toggleRepeatsOrder() {
+    var ca = document.cookie.split(';');
+
+    var ro = "0";
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+
+        if (c.indexOf("repeatsOrder=") == 0) {
+            ro = c.substring(13, c.length);
+            break;
+        }
+
+    }
+
+    var date = new Date();
+    date.setTime(date.getTime() + 31536000000);
+
+    if (ro == "0") ro = "repeatsOrder=1; expires=" + date.toGMTString();
+        /* + ";path=/secure";*/
+    else ro = "repeatsOrder=0; expires=" + date.toGMTString();
+    /* + ";path=/secure";*/document.cookie = ro; __doPostBack('repeatsOrder', '');
+
+}
+
+function toggleRegistrationsOrder(ro) {
+    //Read current value
+    var ca = document.cookie.split(';');
+
+    var cu = "1";
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+
+        if (c.indexOf("registrationsOrder=") == 0) {
+            cu = c.substring(19, c.length);
+            break;
+        }
+
+    }
+
+    if ((ro == "1") && (cu == "1"))
+        ro = "4";
+    else if ((ro == "2") && (cu == "2"))
+        ro = "3";
+    else if ((ro == "2") && (cu == "3"))
+        ro = "5";
+    else if ((ro == "2") && (cu == "5"))
+        ro = "6";
+    var date = new Date();
+    date.setTime(date.getTime() + 31536000000);
+
+    document.cookie = "registrationsOrder=" + ro + "; expires=" + date.toGMTString();
+    ;
+    __doPostBack('registrationsOrder', '');
+
+}
+
+function encodeSearch() {
+    if ($('#ctl00_searchFor')) {
+        var txt = $('<div />').text($('#ctl00_searchFor').val()).html();
+        $('#ctl00_searchFor').val(txt);
+    }
+    if ($('#ctl00_searchForTop')) {
+        txt = $('<div />').text($('#ctl00_searchForTop').val()).html();
+        $('#ctl00_searchForTop').val(txt);
+    }
+    if ($('#ctl00_ContentPlaceHolder1_searchText')) {
+        txt = $('<div />').text($('#ctl00_ContentPlaceHolder1_searchText').val()).html();
+        $('#ctl00_ContentPlaceHolder1_searchText').val(txt);
+    }
+}
+
+function slideshowToggle(pauseButton) {
+    if ($(pauseButton).hasClass('paused')) {
+        $(pauseButton).removeClass('paused');
+    }
+    else {
+        $(pauseButton).addClass('paused');
+    }
+}
+function slideToggle(cb, divClass, divClass1) {
+    if (cb.checked) {
+        $(divClass).slideDown();
+        $(divClass1).attr('disabled', 'disabled');
+    }
+    else {
+        $(divClass).slideUp();
+        $(divClass1).prop('disabled', false);
+    }
+}
+function move(bDown, vFrom) {
+    var vTo = 0; if (bDown == 1) {
+        vTo = vFrom + 1; DoMove();
+    }
+    else {
+        if (vFrom > 1) {
+            vTo = vFrom - 1; DoMove();
+        }
+    }
+    function DoMove() {
+        var cFrom = document.getElementById("ctl00_ContentPlaceHolder1_AccordionPane1_content_pharm" + vFrom.toString());
+        if (cFrom) {
+            var cTo = document.getElementById("ctl00_ContentPlaceHolder1_AccordionPane1_content_pharm" + vTo.toString());
+            if (cTo) { var temp = cTo.value; cTo.value = cFrom.value; cFrom.value = temp; }
+        }
+    }
+}
+
+function pFinal() {
+    var n = 0;
+    var nNeeded = 3;
+    var item = '#ctl00_ContentPlaceHolder1_TabContainer1_Panel2_item';
+    var cb = '#ctl00_ContentPlaceHolder1_TabContainer1_Panel2_CheckBox';
+    for (i = 1; i < 30; ++i) {
+        if ($(item + i.toString()).val() != '') {
+            if ($(cb + i.toString()).is(':checked')) {
+                ++n;
+                if (n >= nNeeded)
+                    break;
+            }
+
+        }
+
+    }
+
+    if (n < nNeeded) {
+        $('#ctl00_ContentPlaceHolder1_TabContainer1_Panel3_user_home').prop('checked', false);
+
+        $('#ctl00_ContentPlaceHolder1_TabContainer1_Panel3_user_collect').prop('disabled', false);
+
+        $('#ctl00_ContentPlaceHolder1_TabContainer1_Panel3_homeDelivery').hide();
+
+    }
+
+    else {
+        $('#ctl00_ContentPlaceHolder1_TabContainer1_Panel3_homeDelivery').show();
+    }
+
+}
+
+function DisableClick() {
+    if (window.event.keyCode == 13) {
+        event.returnValue = false;
+        event.cancel = true;
+    }
+
+}
+
+function showResponsiveFullMenu() {
+    $(".mainMenu > li > a").animate({ "font-size": "14pt" });
+    $(".mainMenu li").animate({ "margin-bottom": "20px" });
+    $(".subMenu").slideDown();
+}
+
+function hideResponsiveFullMenu() {
+    $(".mainMenu > li > a").animate({ "font-size": "12pt" });
+    $(".mainMenu li").animate({ "margin-bottom": "0" });
+    $(".subMenu").slideUp();
+}
+
+function hideCompulsorIndicator1(inputID, className) {
+    //for each matching input field, find the nearest parent that has a compulsory class and remove the compulsory class
+    $(function () {
+        var control = $("#" + inputID);
+        var compulsory = control.closest("." + className);
+
+        compulsory.removeClass(className);
+    });
+}
+
+function hideCompulsorIndicator2(inputID, className) {
+    //for the matching input field, find the clostest formRow, then go looking for the compulsory class in here
+    $(function () {
+        var control = $("#" + inputID);
+        var row = control.closest(".formRow");
+
+        row.find("." + className).removeClass(className);
+    });
+}
+
+function hideCompulsorIndicator3(forName, className) {
+    //find the label that is for the control indicated and then look for the closest parent with the compulsory class
+    $(function () {
+        var label = $("label[for=" + forName + "]");
+        label.closest("." + className).removeClass(className);
+    });
+}

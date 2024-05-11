@@ -1,0 +1,66 @@
+﻿var v = null;
+var slide_next = 1;
+var ShowPicture = new Array();
+var LinkPicture = new Array();
+var SlideShowSpeed = 9000;
+var slide_current = 0;
+var preLoad = null;
+var slide_total = 0;
+var pause = false;
+
+function runSlideShow() {
+    v = document.getElementById("slide");
+    if (v) {
+        slide_total = ShowPicture.length;
+        v.gotoitem = LinkPicture[0];
+        if (v.gotoitem && v.gotoitem != "") {
+            v.alt = "Open the web page";
+        }
+        v.onclick = function () {
+            if (this.gotoitem && this.gotoitem != "")
+                document.location.href = this.gotoitem;
+            else {
+                clearTimeout(timer);
+                timer = setTimeout("fadeImage()", 0);
+            }
+        }
+        preLoad = new Array();
+        for (slide_current = 0; slide_current < slide_total; slide_current++) {
+            preLoad[slide_current] = new Image();
+            preLoad[slide_current].src = ShowPicture[slide_current];
+            preLoad[slide_current].gotoitem = LinkPicture[slide_current];
+            if (LinkPicture[slide_current] && LinkPicture[slide_current] != "") {
+                preLoad[slide_current].alt = "Open the web page for slide " + slide_current;
+            } else {
+                preLoad[slide_current].alt = "slide " + slide_current;
+			}
+        }
+        timer = setTimeout("fadeImage()", SlideShowSpeed);
+    }
+}
+function fadeImage() {
+    $('#slideshow').css('background-image','url(' + preLoad[slide_next].src + ')');
+    $('#slide').fadeTo(1500, 0, function () {
+        this.gotoitem = preLoad[slide_next].gotoitem;
+        this.alt = preLoad[slide_next].alt;
+        this.src = preLoad[slide_next].src;
+        $('#slide').fadeTo(0, 1);
+        slide_next = slide_next + 1;
+        if (slide_next == slide_total)
+            slide_next = 0;
+        timer = setTimeout("fadeImage()", SlideShowSpeed);
+    });
+}
+
+function pauseSlideShow(pauseButton) {
+
+    //Play
+    if ($(pauseButton).hasClass('paused')) {
+        $(pauseButton).removeClass('paused');
+        timer = setTimeout("fadeImage()", SlideShowSpeed);
+    }
+    else {//Pause
+        $(pauseButton).addClass('paused');
+        clearTimeout(timer);
+    }
+}

@@ -1,0 +1,209 @@
+﻿$(document).ready(function () {
+    var cookieKey = 'MswCookieConsent';
+    //fix: this will fix user's with the incorrect cookie consent encoding - causing errors on the prescription form
+    removeCookies(['CookieConsent']);
+
+   // if we are on the cookie policy page, remove the pop up from the DOM.
+    if (isCookiePolicyPath()) {
+        $('#cookieConsent').remove();
+    }
+
+    var cookie = getCookie(cookieKey);
+
+    if (cookie === undefined) {
+        $('#cookieConsent-button-save').hide();
+        showCookieConsent();
+    } else {
+        //fix to allow Mavis in reception to use the enter key to submit forms :/
+        $('#cookieConsent').remove();
+        
+        var cookieConsent = JSON.parse(cookie);
+        setCategories(cookieConsent);
+        getCookieConsent(cookieConsent);
+    }
+
+    $('#cookiePolicy-button-save').on("click", function () {
+        var categories = [];
+        $('#selectable-checkbox input:checkbox:checked').each(function () {
+            categories.push($(this).val());
+        });
+
+        var cookie = categories.length
+            ? createCookieSettings(actionTypeEnum.Accept, categories)
+            : createCookieSettings(actionTypeEnum.Reject, categories);
+
+        setCookie(cookieKey, JSON.stringify(cookie));
+        
+        //check if we need to remove any cookies 
+        $('#selectable-checkbox input:checkbox:not(:checked)').each(function () {
+            var category = $(this).val();
+            switch (category) {
+                case categoryTypeEnum.Performance:
+                    var performanceCookies = getPerformanceCookies();
+                    removeCookies(performanceCookies);
+                    break;
+                case categoryTypeEnum.Functionality:
+                    var functionalCookies = getFunctionalCookies();
+                    removeCookies(functionalCookies);
+                    break;
+            }
+        });
+    });
+
+    $('#cookieConsent-button-save').on("click", function () {
+        var categories = [];
+        $('#selectable-checkbox input:checkbox:checked').each(function () {
+            categories.push($(this).val());
+        });
+        var cookie = categories.length
+            ? createCookieSettings(actionTypeEnum.Accept, categories)
+            : createCookieSettings(actionTypeEnum.Reject, categories);
+
+        setCookie(cookieKey, JSON.stringify(cookie));
+        hideCookieConsent();
+
+        if (isSecurePath()) {
+            window.location.reload();
+        }
+    });
+
+    $('#cookieConsent-button-accept').on("click", function () {
+        var cookie = createCookieSettings(actionTypeEnum.Accept, getAllCategories());
+        setCookie(cookieKey, JSON.stringify(cookie));
+
+        hideCookieConsent();
+
+        if (isSecurePath()) {
+            window.location.reload();
+        }
+    });
+
+    $('#cookieConsent-button-reject').on("click", function () {
+        var cookieSettings = createCookieSettings(actionTypeEnum.Reject, []);
+        setCookie(cookieKey, JSON.stringify(cookieSettings));
+        hideCookieConsent();
+    });
+
+    $('#cookieConsent-button-close').on("click", function () {
+        hideCookieConsent();
+    });
+
+    $('#cookieConsent-button-close').on("keyup", function (e) {
+        if (e.keyCode == 13) {
+            hideCookieConsent();
+        }
+    });
+
+    $('#cookieConsent-checkboxs').on("change", function () {
+        $('#cookieConsent-button-accept').hide();
+        $('#cookieConsent-button-save').show();
+    });
+});
+
+
+function removeCookies(cookies) {
+    $.each(cookies, function (i, value) {
+         $.removeCookie(value, { path: '/' });
+    });
+}
+
+function createCookieSettings(action, categories) {
+    var cookie = new Object();
+    cookie.action = action;
+    cookie.categories = categories;
+    return cookie;
+}
+
+function getAllCategories() {
+    return [categoryTypeEnum.Performance, categoryTypeEnum.Functionality, categoryTypeEnum.Targeting];
+}
+
+function setCategories(cookieConsent) {
+    $.each(cookieConsent.categories,
+        function (index, category) {
+            $("#selectable-checkbox input[value='" + category + "']").prop('checked', true);
+        });
+}
+
+function showCookieConsent() {
+    $('#cookieConsent').show();
+}
+
+function hideCookieConsent() {
+    $('#cookieConsent').hide();
+}
+
+function isSecurePath() {
+    var url = window.location.href;
+    var pathname = new URL(url).pathname.toLowerCase();
+    return pathname.indexOf('secure') > -1;
+}
+
+function isCookiePolicyPath() {
+    var url = window.location.href;
+    var pathname = new URL(url).pathname.toLowerCase();
+    return pathname.indexOf('cookiepolicy') > -1;
+}
+
+function getCookieConsent(cookieConsent) {
+    if (cookieConsent.action === actionTypeEnum.Accept) {
+        $.each(cookieConsent.categories,
+            function (i, category) {
+                var tag = $("*[data-cookiecategory='" + category + "']");
+                tag.each(function () {
+                    var self = this;
+                    var async = !!self.src.includes('analytics');
+                    reloadJavascript(self.src, "text/javascript", category, async);
+                });
+            });
+    }
+}
+
+function reloadJavascript(src, type, data, async) {
+    var head = document.getElementsByTagName('head')[0];
+    var script = document.createElement('script');
+    script.async = async;
+    script.src = src;
+    script.type = type;
+    script.setAttribute('data-cookiecategory', data);
+
+    head.appendChild(script);
+}
+
+var actionTypeEnum = {
+    Accept: 'accept',
+    Reject: 'reject'
+};
+
+var categoryTypeEnum = {
+    Performance: 'performance',
+    Targeting: 'targeting',
+    Functionality: 'functionality'
+}
+
+function setCookie(name, value) {
+    var expires = '';
+    var date = new Date();
+    date.setFullYear(date.getFullYear() + 1);
+    expires = '; expires=' + date.toUTCString();
+    document.cookie = name + '=' + (value || '') + expires + '; path=/';
+}
+
+function getCookie(name) {
+    var nameEq = name + '=';
+    var ca = document.cookie.split(';');
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEq) == 0) return c.substring(nameEq.length, c.length);
+    }
+}
+
+
+function getFunctionalCookies() {
+    return ['googtrans', 'apps', 'dList1', 'dList2', 'repeatPrescription', 'repeatPrescription2'];
+}
+
+function getPerformanceCookies() {
+    return ['_gid', '_ga', '_gat'];
+}

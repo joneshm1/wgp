@@ -1,0 +1,15 @@
+﻿.cookie-policy-table {
+    border-collapse: collapse;
+    border-spacing: 0;
+    width: 100%;
+    border: 1px solid #ddd;
+}
+
+.cookie-policy-table th, td {
+    text-align: left;
+    padding: 8px;
+}
+
+.cookie-policy-table tr:nth-child(even) {
+    background-color: #f2f2f2
+}
